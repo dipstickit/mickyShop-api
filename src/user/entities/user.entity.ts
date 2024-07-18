@@ -32,11 +32,7 @@ export class User {
   @Exclude()
   password: string;
 
-  @Column({
-    type: 'set',
-    enum: Role,
-    default: [Role.User],
-  })
+  @Column('simple-array', { default: [Role.User] })
   roles: Role[];
 
   @OneToMany(() => Order, (order) => order.user)

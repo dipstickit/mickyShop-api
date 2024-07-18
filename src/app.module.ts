@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AttributeValueModule } from './attribute-value/attribute-value.module';
 import { AttributeModule } from './attribute/attribute.module';
@@ -14,16 +14,21 @@ import { VariantModule } from './variant/variant.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: '.local.env',
     }),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: process.env.DB_HOST,
-      port: parseInt(process.env.DB_PORT, 10),
-      username: process.env.DB_USERNAME,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_SCHEMA,
-      autoLoadEntities: true,
-      synchronize: process.env.NODE_ENV === 'development',
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        host: configService.get<string>('DB_HOST'),
+        port: configService.get<number>('DB_PORT'),
+        username: configService.get<string>('DB_USERNAME'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_SCHEMA'),
+        autoLoadEntities: true,
+        synchronize: configService.get<boolean>('DB_SYNC'),
+      }),
+      inject: [ConfigService],
     }),
     UserModule,
     AuthModule,
