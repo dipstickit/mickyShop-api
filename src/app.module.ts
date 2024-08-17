@@ -26,6 +26,7 @@ import { VariantModule } from './variant/variant.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_SCHEMA'),
         autoLoadEntities: true,
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: configService.get<boolean>('DB_SYNC'),
       }),
       inject: [ConfigService],

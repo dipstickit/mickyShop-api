@@ -31,15 +31,6 @@ export class ProductService {
   ) {}
 
   async topSelling() {
-    // Select Product.name, SUM(OderItem.orderedQuantity) as sold
-    // from Product, Variant, OrderItem, Order
-    // where Product.id = Variant.productId
-    //    and Variant.id = OderItem.VariantId
-    //    and OderItem.OrderId = Order.id
-    // having sold > 0
-    // limit 6
-    // group by Product.name
-
     return this.productRepo
       .createQueryBuilder('product')
       .select('product.name', 'name')
@@ -48,7 +39,7 @@ export class ProductService {
       .leftJoin(OrderItem, 'oi', 'v.id = oi.variantId')
       .leftJoin(Order, 'o', 'o.id = oi.orderId')
       .groupBy('product.name')
-      .having('sold > 0')
+      .having('SUM(oi.orderedQuantity) > 0')
       .orderBy('sold', 'DESC')
       .limit(5)
       .getRawMany();

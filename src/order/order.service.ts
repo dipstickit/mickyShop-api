@@ -180,13 +180,14 @@ export class OrderService {
   async salesStatistic(year: string) {
     return this.ordersRepo
       .createQueryBuilder('order')
-      .select('paymentMethod', 'method')
-      .addSelect('MONTH(paidDate)', 'month')
-      .addSelect('SUM(totalPrice)', 'total')
+      .select('order.paymentMethod', 'method')
+      .addSelect('EXTRACT(MONTH FROM order.paidDate)', 'month')
+      .addSelect('SUM(order.totalPrice)', 'total')
       .where(
-        `isPaid = true and paidDate IS NOT NULL and YEAR(paidDate) = ${year}`,
+        'order.isPaid = true AND order.paidDate IS NOT NULL AND EXTRACT(YEAR FROM order.paidDate) = :year',
+        { year: year },
       )
-      .groupBy('paymentMethod, MONTH(paidDate)')
+      .groupBy('order.paymentMethod, EXTRACT(MONTH FROM order.paidDate)')
       .getRawMany();
   }
 
@@ -197,10 +198,87 @@ export class OrderService {
   async overview() {
     return await this.ordersRepo
       .createQueryBuilder('order')
-      .select('orderStatus')
+      .select('order.orderStatus', 'orderStatus') // Đảm bảo 'orderStatus' có alias
       .addSelect('COUNT(order.id)', 'total')
-      .groupBy('orderStatus')
+      .groupBy('order.orderStatus') // Sử dụng alias 'order'
       .getRawMany();
+  }
+
+  async createZaloPayOrder(order) {
+    const yy = new Date().getFullYear().toString().slice(-2);
+    const mm = String(new Date(Date.now()).getMonth() + 1).padStart(2, '0');
+    const dd = String(new Date(Date.now()).getUTCDate()).padStart(2, '0');
+
+    const items = order.orderItems.map((o) => {
+      let attributes = '';
+
+      for (const [i, at] of o.variant.attributeValues.entries() as any) {
+        attributes += i === 0 ? ' - ' : ', ';
+        attributes += `${at.value}`;
+      }
+
+      const itemname = o.variant.product?.name + attributes;
+
+      return {
+        itemid: o.id,
+        itemname,
+        itemprice: o.orderedPrice,
+        itemquantity: o.orderedQuantity,
+      };
+    });
+
+    const server_uri = process.env.SERVER;
+    const callback_url = `${server_uri}/order/zalopay/callback`;
+
+    const params = {
+      app_id: 2553,
+      app_user: order.fullName,
+      app_trans_id: `${yy}${mm}${dd}_${order.id}_${Date.now()}`,
+      embed_data: JSON.stringify({
+        redirecturl: `${process.env.CLIENT}/order/${order.id}`,
+        orderId: order.id,
+      }),
+      amount: 50000,
+      item: JSON.stringify(items),
+      app_time: Date.now(),
+      bank_code: 'zalopayapp',
+      phone: order.phone.toString(),
+      address: order.address,
+      description: `Thanh toán đơn hàng ${order.id}`,
+      mac: '',
+      callback_url,
+    };
+
+    const data =
+      params.app_id +
+      '|' +
+      params.app_trans_id +
+      '|' +
+      params.app_user +
+      '|' +
+      params.amount +
+      '|' +
+      params.app_time +
+      '|' +
+      params.embed_data +
+      '|' +
+      params.item;
+
+    const key1 = process.env.ZALO_KEY1;
+    const mac = createHmac('sha256', key1).update(data).digest('hex');
+    params.mac = mac;
+
+    try {
+      return (
+        await firstValueFrom(
+          this.httpService.post('https://sb-openapi.zalopay.vn/v2/create', {
+            ...params,
+          }),
+        )
+      ).data;
+    } catch (error) {
+      throw new InternalServerErrorException('ZaloPay Error');
+    }
   }
 
   async checkOrderUser(data) {

@@ -125,11 +125,21 @@ export class UserService {
       throw new NotFoundException('User not found.');
     }
 
-    const hashedPassword = await bcrypt.hash(
-      updateAccountDto.password,
-      saltOrRounds,
-    );
-    updateAccountDto.password = hashedPassword;
+    if (updateAccountDto.password) {
+      console.log('Password to hash:', updateAccountDto.password);
+
+      try {
+        const hashedPassword = await bcrypt.hash(
+          updateAccountDto.password,
+          saltOrRounds,
+        );
+        updateAccountDto.password = hashedPassword;
+      } catch (error) {
+        throw new BadRequestException('Error hashing password');
+      }
+    } else {
+      console.log('No password provided for update.');
+    }
 
     return this.usersRepository.update(id, updateAccountDto).then((res) => ({
       statusCode: HttpStatus.OK,

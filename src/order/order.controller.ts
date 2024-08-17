@@ -59,6 +59,13 @@ export class OrderController {
     return this.orderService.create(createOrderDto);
   }
 
+  @Roles(Role.Admin, Role.User, Role.Manager, Role.Employee)
+  @UseGuards(AccessTokenGuard, RolesGuard)
+  @Post('zalopay/create-order')
+  createZaloPayOrder(@Body() order) {
+    return this.orderService.createZaloPayOrder(order);
+  }
+
   @Post('zalopay/callback')
   async zaloPayCallback(@Req() req: Request, @Res() res: Response) {
     const result: any = {};

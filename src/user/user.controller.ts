@@ -56,7 +56,13 @@ export class UserController {
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.userService.findOne(id);
   }
-
+  @Patch('update-account/:id')
+  updateAccount(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateAccountDto: UpdateAccountDto,
+  ) {
+    return this.userService.updateAccount(id, updateAccountDto);
+  }
   @UseGuards(AccessTokenGuard)
   @Patch(':id')
   update(
@@ -103,13 +109,13 @@ export class UserAdminController {
     return this.userService.findOne(id);
   }
 
-  @Patch('update-account/:id')
-  updateAccount(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateAccountDto: UpdateAccountDto,
-  ) {
-    return this.userService.updateAccount(id, updateAccountDto);
-  }
+  // @Patch('update-account/:id')
+  // updateAccount(
+  //   @Param('id', ParseIntPipe) id: number,
+  //   @Body() updateAccountDto: UpdateAccountDto,
+  // ) {
+  //   return this.userService.updateAccount(id, updateAccountDto);
+  // }
 
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
